@@ -6,6 +6,7 @@ import numpy as np
 from skimage import exposure, filters
 import matplotlib.pyplot as plt
 from filters import meanFilter, medianFilter, medianWBorders
+from standardization import rescaling, z_score, white_stripe
 
 def main():
     st.set_page_config(page_title="Proyecto Procesamiento de imágenes", layout="wide")
@@ -79,7 +80,7 @@ def main():
                 st.pyplot(fig)
 
             # Slider para navegar por los ejes de la imagen
-            slice_idx = st.slider('Seleccionar un eje', 0, img_data.shape[0]-1, img_data.shape[0]//2)
+            slice_idx = st.slider('Seleccionar un eje', 0, img_data.shape[2]-1, img_data.shape[2]//2)
             update_view(slice_idx)
 
             # Eliminar el archivo temporalmente guardado
@@ -102,6 +103,17 @@ def main():
             # Obtener datos de píxeles de la imagen
             img_data = nii_img.get_fdata()
 
+            # Mostrar el menú desplegable de opciones de standarizacion y el botón de confirmación
+            standardization_name = st.selectbox('Seleccione un metodo de estandarización', ['Ninguno', 'Rescaling', 'Z-score', 'White stripe'])
+            if standardization_name != 'Ninguno':
+                if st.button('Aplicar estandarizacion'):
+                    if standardization_name == 'Rescaling':
+                        img_data = rescaling(img_data)
+                    elif standardization_name == 'Z-score':
+                        img_data = z_score(img_data)
+                    elif standardization_name == 'White stripe':
+                        img_data = white_stripe(img_data)
+
             # Mostrar el menú desplegable de opciones de filtros y el botón de confirmación
             filter_name = st.selectbox('Seleccione un filtro', ['Ninguno', 'Media', 'Mediana', 'Mediana con Bordes'])
             if filter_name != 'Ninguno':
@@ -111,10 +123,7 @@ def main():
                     elif filter_name == 'Mediana':
                         img_data = medianFilter(img_data)
                     elif filter_name == 'Mediana con Bordes':
-                        img_data = medianWBorders(img_data)
-
-            # Normalizar los valores de píxeles para que estén dentro del rango [0, 1]
-            img_data = exposure.rescale_intensity(img_data, in_range='image', out_range=(0, 1))
+                        img_data = medianWBorders(img_data)             
 
             # Crear figura con tres sub-figuras, una para cada eje
             fig, axs = plt.subplots(ncols=3, figsize=(15, 5))
@@ -124,11 +133,11 @@ def main():
                 axs[0].imshow(img_data[value, :, :])
                 axs[1].imshow(img_data[:, value, :])
                 axs[2].imshow(img_data[:, :, value])
-                st.pyplot(fig)
+                st.pyplot(fig)                                
 
             # Slider para navegar por los ejes de la imagen
-            slice_idx = st.slider('Seleccionar un eje', 0, img_data.shape[0]-1, img_data.shape[0]//2)
-            update_view(slice_idx)
+            slice_idx = st.slider('Seleccionar un eje', 0, img_data.shape[2]-1, img_data.shape[2]//2)
+            update_view(slice_idx)           
 
             # Eliminar el archivo temporalmente guardado
             os.remove(temp_file.name)
