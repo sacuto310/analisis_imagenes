@@ -7,11 +7,13 @@ from skimage import exposure, filters
 import matplotlib.pyplot as plt
 from filters import meanFilter, medianFilter, medianWBorders
 from standardization import rescaling, z_score, white_stripe
+from segmentation import tresholding, k_means, GMM, growing
+import SimpleITK as sitk
 
 def main():
     st.set_page_config(page_title="Proyecto Procesamiento de imágenes", layout="wide")
 
-    menu = ["Pre-visualizacion de la imagen", "Visualizar volumenes", "Pre-Procesamiento"]
+    menu = ["Pre-visualizacion de la imagen", "Visualizar volumenes", "Pre-Procesamiento", "Segmentación"]
     choice = st.sidebar.selectbox("Seleccionar página", menu)
 
     if choice == "Pre-visualizacion de la imagen":
@@ -43,7 +45,7 @@ def main():
                 else:
                     slice_idx = st.slider("Seleccionar slice", 0, img_data.shape[2] - 1, img_data.shape[2] // 2)
                     img_slice = img_data[:, :, slice_idx]
-
+                                
                 # Normalizar los valores de píxeles para que estén dentro del rango [0, 1]
                 img_slice = exposure.rescale_intensity(img_slice, in_range='image', out_range=(0, 1))
 
@@ -124,6 +126,53 @@ def main():
                         img_data = medianFilter(img_data)
                     elif filter_name == 'Mediana con Bordes':
                         img_data = medianWBorders(img_data)             
+
+            # Crear figura con tres sub-figuras, una para cada eje
+            fig, axs = plt.subplots(ncols=3, figsize=(15, 5))
+
+            # Función para actualizar la visualización de la imagen según el valor del slider
+            def update_view(value):
+                axs[0].imshow(img_data[value, :, :])
+                axs[1].imshow(img_data[:, value, :])
+                axs[2].imshow(img_data[:, :, value])
+                st.pyplot(fig)                                
+
+            # Slider para navegar por los ejes de la imagen
+            slice_idx = st.slider('Seleccionar un eje', 0, img_data.shape[2]-1, img_data.shape[2]//2)
+            update_view(slice_idx)           
+
+            # Eliminar el archivo temporalmente guardado
+            os.remove(temp_file.name)
+
+    elif choice == "Segmentación":
+        st.title("Segmentacion de la imagen")
+        # Cargar archivo .nii o .nii.gz
+        uploaded_file = st.file_uploader("Cargar archivo .nii o .nii.gz", type=["nii", "nii.gz"])
+        if uploaded_file is not None:
+            # Guarda el archivo cargado temporalmente con extensión .nii
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.nii') as temp_file:
+                temp_file.write(uploaded_file.read())
+                temp_file.flush()
+                temp_file.close()
+
+            # Lee el archivo temporalmente guardado
+            nii_img = nib.load(temp_file.name)
+
+            # Obtener datos de píxeles de la imagen
+            img_data = nii_img.get_fdata()
+
+            # Mostrar el menú desplegable de opciones de segmentacion y el botón de confirmación
+            segmentation_name = st.selectbox('Seleccione un metodo de estandarización', ['Ninguno', 'Treshold', 'Region-Growing', 'k_means', 'Gaussian mixture'])
+            if segmentation_name != 'Ninguno':
+                if st.button('Aplicar segmentacion'):
+                    if segmentation_name == 'Treshold':
+                        img_data = tresholding(img_data)
+                    elif segmentation_name == 'Region-Growing':
+                        img_data = growing(img_data)
+                    elif segmentation_name == 'k_means':
+                        img_data = k_means(img_data)
+                    elif segmentation_name == 'Gaussian mixture':
+                        img_data = GMM(img_data)           
 
             # Crear figura con tres sub-figuras, una para cada eje
             fig, axs = plt.subplots(ncols=3, figsize=(15, 5))
