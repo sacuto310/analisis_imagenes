@@ -25,7 +25,7 @@ pip install -r requirements.txt
 4. Correr el programa
 
 ```bash
-streamlit run index.py
+streamlit run main.py
 ```
 
 5. Para abrir el programa, ir al siguiente link
